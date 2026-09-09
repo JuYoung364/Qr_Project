@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>온라인 주문</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        body {
+            background-color: #f4f6f8;
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .menu-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-qty {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .btn-qty:active {
+            background: #eee;
+        }
+        .cart-summary {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .total-price {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .btn-order {
+            width: 100%;
+            padding: 15px;
+            background: #ff5722;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-order:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* 내 주문 현황 영역 */
+        .status-section {
+            margin-top: 30px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .status-section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #f4f6f8;
+            padding-bottom: 8px;
+        }
+        .status-card {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-left: 5px solid #ff5722;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .status-card.completed {
+            border-left-color: #4caf50;
+            background: #f0fdf4;
+        }
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #fff;
+            background: #ff5722;
+        }
+        .status-badge.completed {
+            background: #4caf50;
+        }
+        .status-details {
+            font-size: 13px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>온라인 주문</h1>
+    
+    <!-- 메뉴 카드 -->
+    <div class="menu-card">
+        <div>
+            <h3>🍟 갈릭버터 감자튀김</h3>
+            <p style="color: #666; font-size: 14px;">4,000원</p>
+        </div>
+        <div class="quantity-control">
+            <button class="btn-qty" onclick="changeQty('fries', -1)">-</button>
+            <span id="qty-fries">0</span>
+            <button class="btn-qty" onclick="changeQty('fries', 1)">+</button>
+        </div>
+    </div>
+
+    <div class="menu-card">
+        <div>
+            <h3>🥤 블루레몬에이드</h3>
+            <p style="color: #666; font-size: 14px;">2,500원</p>
+        </div>
+        <div class="quantity-control">
+            <button class="btn-qty" onclick="changeQty('drink', -1)">-</button>
+            <span id="qty-drink">0</span>
+            <button class="btn-qty" onclick="changeQty('drink', 1)">+</button>
+        </div>
+    </div>
+
+    <div class="menu-card">
+        <div>
+            <h3>🎁 세트 (감튀+음료)</h3>
+            <p style="color: #666; font-size: 14px;">6,000원</p>
+        </div>
+        <div class="quantity-control">
+            <button class="btn-qty" onclick="changeQty('set_menu', -1)">-</button>
+            <span id="qty-set_menu">0</span>
+            <button class="btn-qty" onclick="changeQty('set_menu', 1)">+</button>
+        </div>
+    </div>
+
+    <!-- 결제 영역 -->
+    <div class="cart-summary">
+        <div class="total-price">
+            <span>총 결제 금액</span>
+            <span id="total-price">0원</span>
+        </div>
+        <button id="order-btn" class="btn-order" onclick="submitOrder()" disabled>주문하기</button>
+    </div>
+
+    <!-- 실시간 주문 현황 섹션 -->
+    <div class="status-section">
+        <h2>📋 실시간 주문 현황</h2>
+        <div id="my-orders-list">
+            <p style="color: #999; text-align: center; padding: 10px 0;">주문 내역이 없습니다.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:3000/api/orders';
+        const prices = {
+            fries: 4000,
+            drink: 2500,
+            set_menu: 6000
+        };
+        const cart = {
+            fries: 0,
+            drink: 0,
+            set_menu: 0
+        };
+
+        window.onload = function() {
+            fetchMyOrders();
+            setInterval(fetchMyOrders, 3000);
+        };
+
+        function changeQty(item, delta) {
+            if (cart[item] + delta >= 0) {
+                cart[item] += delta;
+                document.getElementById(`qty-${item}`).innerText = cart[item];
+                updateTotal();
+            }
+        }
+
+        function updateTotal() {
+            const total = (cart.fries * prices.fries) + (cart.drink * prices.drink) + (cart.set_menu * prices.set_menu);
+            document.getElementById('total-price').innerText = total.toLocaleString() + '원';
+            document.getElementById('order-btn').disabled = (total === 0);
+        }
+
+        async function submitOrder() {
+            const total = (cart.fries * prices.fries) + (cart.drink * prices.drink) + (cart.set_menu * prices.set_menu);
+            if (total === 0) return;
+
+            try {
+                const response = await fetch(API_BASE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fries: cart.fries,
+                        drink: cart.drink,
+                        set_menu: cart.set_menu,
+                        totalPrice: total
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+
+                    let myOrderIds = JSON.parse(localStorage.getItem('myOrderIds') || '[]');
+                    myOrderIds.push(result.orderId);
+                    localStorage.setItem('myOrderIds', JSON.stringify(myOrderIds));
+
+                    alert('주문이 접수되었습니다!');
+
+                    cart.fries = 0;
+                    cart.drink = 0;
+                    cart.set_menu = 0;
+                    document.getElementById('qty-fries').innerText = '0';
+                    document.getElementById('qty-drink').innerText = '0';
+                    document.getElementById('qty-set_menu').innerText = '0';
+                    updateTotal();
+
+                    fetchMyOrders();
+                } else {
+                    alert('주문 처리 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('주문 실패:', error);
+                alert('서버와 통신할 수 없습니다.');
+            }
+        }
+
+        async function fetchMyOrders() {
+            const myOrderIds = JSON.parse(localStorage.getItem('myOrderIds') || '[]');
+            const container = document.getElementById('my-orders-list');
+
+            if (myOrderIds.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center; padding: 10px 0;">주문 내역이 없습니다.</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE_URL);
+                const allOrders = await response.json();
+
+                const myOrders = allOrders.filter(order => myOrderIds.includes(order.id));
+
+                if (myOrders.length === 0) {
+                    container.innerHTML = '<p style="color: #999; text-align: center; padding: 10px 0;">주문 내역이 없습니다.</p>';
+                    return;
+                }
+
+                container.innerHTML = myOrders.map(order => {
+                    let itemsStr = [];
+                    if (order.fries > 0) itemsStr.push(`갈릭버터 감자튀김 ${order.fries}개`);
+                    if (order.drink > 0) itemsStr.push(`블루레몬에이드 ${order.drink}개`);
+                    if (order.set_menu > 0) itemsStr.push(`세트 ${order.set_menu}개`);
+
+                    const isCompleted = order.status === '조리완료';
+                    
+                    const timeStr = new Date(order.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString('ko-KR', {
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    });
+
+                    return `
+                        <div class="status-card ${isCompleted ? 'completed' : ''}">
+                            <div class="status-header">
+                                <span>주문번호 #${order.id} (${timeStr})</span>
+                                <span class="status-badge ${isCompleted ? 'completed' : ''}">
+                                    ${order.status}
+                                </span>
+                            </div>
+                            <div class="status-details">
+                                ${itemsStr.join(', ')} | ${order.total_price.toLocaleString()}원
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('주문 현황 불러오기 실패:', error);
+            }
+        }
+    </script>
+</body>
+</html>
