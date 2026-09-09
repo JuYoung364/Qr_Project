@@ -8,7 +8,7 @@
     "build": "npm install && npm rebuild sqlite3 --build-from-source"
   },
   "engines": {
-    "node": "20.x"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "cors": "^2.8.5",
