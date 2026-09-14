@@ -5,14 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR 주문하기</title>
   <style>
-    /* 기본 레이아웃 및 스타일 */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       margin: 0;
       padding: 20px;
       background-color: #f8f9fa;
       color: #333;
-      position: relative; /* 우측 상단 관리자 버튼 고정용 */
+      position: relative;
     }
 
     /* 우측 상단 관리자 페이지 링크 버튼 */
@@ -37,12 +36,12 @@
       background-color: #f5f5f5;
     }
 
-    /* 페이지 제목 및 컨테이너 */
+    /* 레이아웃 컨테이너 */
     .container {
-      max-width: 500px;
+      max-width: 450px;
       margin: 40px auto 0 auto;
       background: #ffffff;
-      padding: 20px;
+      padding: 24px;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
@@ -50,16 +49,36 @@
     h1 {
       font-size: 22px;
       text-align: center;
+      margin-bottom: 24px;
+      color: #222;
+    }
+
+    .form-group {
       margin-bottom: 20px;
     }
 
-    /* 메뉴 목록 및 폼 스타일 */
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .table-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    /* 메뉴 목록 */
     .menu-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid #eeeeee;
+      padding: 14px 0;
+      border-bottom: 1px solid #eee;
     }
 
     .menu-info {
@@ -78,30 +97,32 @@
       margin-top: 4px;
     }
 
-    .table-input, .order-btn {
-      width: 100%;
-      padding: 12px;
-      margin-top: 15px;
-      border-radius: 8px;
-      box-sizing: border-box;
-    }
-
-    .table-input {
-      border: 1px solid #ccc;
+    .qty-input {
+      width: 60px;
+      padding: 6px;
+      text-align: center;
       font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
 
     .order-btn {
-      background-color: #007bff;
-      color: white;
+      width: 100%;
+      padding: 14px;
+      margin-top: 20px;
+      background-color: #ffb703;
+      color: #000;
       border: none;
+      border-radius: 8px;
       font-size: 16px;
       font-weight: bold;
       cursor: pointer;
+      transition: background 0.2s;
     }
 
     .order-btn:hover {
-      background-color: #0056b3;
+      background-color: #fb8500;
+      color: #fff;
     }
   </style>
 </head>
@@ -111,29 +132,38 @@
   <a href="admin.html" class="admin-link">관리자 페이지 ⚙️</a>
 
   <div class="container">
-    <h1>메뉴 주문하기</h1>
+    <h1>🍟 메뉴 주문하기</h1>
 
     <!-- 테이블 번호 입력 -->
-    <div>
-      <label for="tableNumber"><b>테이블 번호</b></label>
-      <input type="number" id="tableNumber" class="table-input" placeholder="테이블 번호를 입력하세요 (예: 3)">
+    <div class="form-group">
+      <label for="tableNumber">테이블 번호</label>
+      <input type="number" id="tableNumber" class="table-input" placeholder="테이블 번호를 입력하세요 (예: 1)">
     </div>
 
-    <!-- 메뉴 리스트 (예시) -->
-    <div id="menuList" style="margin-top: 20px;">
+    <!-- 메뉴 선택 리스트 -->
+    <div id="menuList">
       <div class="menu-item">
         <div class="menu-info">
-          <span class="menu-name">아메리카노</span>
+          <span class="menu-name">갈릭버터 감자튀김</span>
           <span class="menu-price">4,000원</span>
         </div>
-        <input type="number" id="item1" min="0" value="0" style="width: 50px; text-align: center;">
+        <input type="number" id="item1" class="qty-input" min="0" value="0">
       </div>
+
       <div class="menu-item">
         <div class="menu-info">
-          <span class="menu-name">카페라떼</span>
-          <span class="menu-price">4,500원</span>
+          <span class="menu-name">블루레몬에이드</span>
+          <span class="menu-price">2,500원</span>
         </div>
-        <input type="number" id="item2" min="0" value="0" style="width: 50px; text-align: center;">
+        <input type="number" id="item2" class="qty-input" min="0" value="0">
+      </div>
+
+      <div class="menu-item">
+        <div class="menu-info">
+          <span class="menu-name">세트 (감자튀김 + 에이드)</span>
+          <span class="menu-price">6,000원</span>
+        </div>
+        <input type="number" id="item3" class="qty-input" min="0" value="0">
       </div>
     </div>
 
@@ -147,23 +177,25 @@
 
     async function submitOrder() {
       const tableNumber = document.getElementById('tableNumber').value;
-      const item1Qty = parseInt(document.getElementById('item1').value) || 0;
-      const item2Qty = parseInt(document.getElementById('item2').value) || 0;
+      const qty1 = parseInt(document.getElementById('item1').value) || 0;
+      const qty2 = parseInt(document.getElementById('item2').value) || 0;
+      const qty3 = parseInt(document.getElementById('item3').value) || 0;
 
       if (!tableNumber) {
         alert('테이블 번호를 입력해 주세요.');
         return;
       }
 
-      if (item1Qty === 0 && item2Qty === 0) {
+      if (qty1 === 0 && qty2 === 0 && qty3 === 0) {
         alert('최소 하나 이상의 메뉴를 선택해 주세요.');
         return;
       }
 
-      // 주문 데이터 구성
+      // 주문 항목 구성
       const items = [];
-      if (item1Qty > 0) items.push(`아메리카노 ${item1Qty}잔`);
-      if (item2Qty > 0) items.push(`카페라떼 ${item2Qty}잔`);
+      if (qty1 > 0) items.push(`갈릭버터 감자튀김 ${qty1}개`);
+      if (qty2 > 0) items.push(`블루레몬에이드 ${qty2}개`);
+      if (qty3 > 0) items.push(`세트 ${qty3}개`);
 
       const orderData = {
         table_number: tableNumber,
@@ -181,16 +213,16 @@
 
         if (response.ok) {
           alert('주문이 성공적으로 접수되었습니다!');
-          // 입력 폼 초기화
           document.getElementById('tableNumber').value = '';
           document.getElementById('item1').value = '0';
           document.getElementById('item2').value = '0';
+          document.getElementById('item3').value = '0';
         } else {
-          alert('주문 전송에 실패했습니다. 다시 시도해 주세요.');
+          alert('주문 전송에 실패했습니다.');
         }
       } catch (error) {
         console.error('Error submitting order:', error);
-        alert('서버 연결에 실패했습니다.');
+        alert('서버 연결 실패. 네트워크를 확인해 주세요.');
       }
     }
   </script>
