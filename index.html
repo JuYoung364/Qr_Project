@@ -16,6 +16,27 @@
             padding: 20px;
             max-width: 500px;
             margin: 0 auto;
+            position: relative;
+        }
+        /* 우측 상단 관리자 페이지 링크 버튼 */
+        .admin-link {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 12px;
+            color: #888888;
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+        }
+        .admin-link:hover {
+            color: #333333;
+            border-color: #999999;
+            background-color: #f5f5f5;
         }
         h1 {
             text-align: center;
@@ -80,7 +101,7 @@
             cursor: not-allowed;
         }
 
-        /* 내 주문 현황 영역 */
+        /* 실시간 주문 현황 영역 */
         .status-section {
             margin-top: 30px;
             background: #fff;
@@ -102,6 +123,11 @@
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 10px;
+        }
+        .status-card.is-mine {
+            border: 1px solid #ff5722;
+            border-left: 5px solid #ff5722;
+            background: #fff6f3;
         }
         .status-card.completed {
             border-left-color: #4caf50;
@@ -127,6 +153,11 @@
         .status-details {
             font-size: 13px;
             color: #666;
+        }
+        .my-tag {
+            color: #ff5722;
+            font-weight: bold;
+            margin-left: 4px;
         }
     </style>
 </head>
@@ -180,7 +211,7 @@
         <button id="order-btn" class="btn-order" onclick="submitOrder()" disabled>주문하기</button>
     </div>
 
-    <!-- 실시간 주문 현황 섹션 -->
+    <!-- 실시간 전체 주문 현황 섹션 -->
     <div class="status-section">
         <h2>📋 실시간 주문 현황</h2>
         <div id="my-orders-list">
@@ -267,38 +298,33 @@
             const myOrderIds = JSON.parse(localStorage.getItem('myOrderIds') || '[]');
             const container = document.getElementById('my-orders-list');
 
-            if (myOrderIds.length === 0) {
-                container.innerHTML = '<p style="color: #999; text-align: center; padding: 10px 0;">주문 내역이 없습니다.</p>';
-                return;
-            }
-
             try {
                 const response = await fetch(API_BASE_URL);
                 const allOrders = await response.json();
 
-                const myOrders = allOrders.filter(order => myOrderIds.includes(order.id));
-
-                if (myOrders.length === 0) {
+                if (!allOrders || allOrders.length === 0) {
                     container.innerHTML = '<p style="color: #999; text-align: center; padding: 10px 0;">주문 내역이 없습니다.</p>';
                     return;
                 }
 
-                container.innerHTML = myOrders.map(order => {
+                // 최신 주문이 상단에 오도록 반전 출력
+                container.innerHTML = [...allOrders].reverse().map(order => {
                     let itemsStr = [];
                     if (order.fries > 0) itemsStr.push(`갈릭버터 감자튀김 ${order.fries}개`);
                     if (order.drink > 0) itemsStr.push(`블루레몬에이드 ${order.drink}개`);
                     if (order.set_menu > 0) itemsStr.push(`세트 ${order.set_menu}개`);
 
                     const isCompleted = order.status === '조리완료';
+                    const isMine = myOrderIds.includes(order.id);
                     
                     const timeStr = new Date(order.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString('ko-KR', {
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
 
                     return `
-                        <div class="status-card ${isCompleted ? 'completed' : ''}">
+                        <div class="status-card ${isMine ? 'is-mine' : ''} ${isCompleted ? 'completed' : ''}">
                             <div class="status-header">
-                                <span>주문번호 #${order.id} (${timeStr})</span>
+                                <span>주문번호 #${order.id} (${timeStr}) ${isMine ? '<span class="my-tag">[내 주문]</span>' : ''}</span>
                                 <span class="status-badge ${isCompleted ? 'completed' : ''}">
                                     ${order.status}
                                 </span>
