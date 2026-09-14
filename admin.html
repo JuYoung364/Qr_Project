@@ -14,14 +14,29 @@
         body {
             background-color: #f4f6f8;
             padding: 20px;
-            max-width: 600px;
-            margin: 0 auto;
         }
+        
+        /* 2단 레이아웃 (주문 목록 + 오른쪽 매출 요약 패널) */
+        .admin-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        /* 왼쪽 주문 목록 영역 */
+        .order-list-section {
+            flex: 1;
+            min-width: 0;
+        }
+
         h1 {
             text-align: center;
             margin-bottom: 20px;
             color: #333;
         }
+
         .order-card {
             background: #fff;
             border-radius: 12px;
@@ -93,12 +108,101 @@
             color: #fff;
             font-size: 13px;
         }
+
+        /* 오른쪽 실시간 매출 통계 패널 */
+        .summary-sidebar {
+            width: 300px;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 20px;
+        }
+        .summary-sidebar h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f4f6f8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            border: 1px solid #edf2f7;
+        }
+        .stat-card.total {
+            background: #fffaf0;
+            border: 1px solid #feebc8;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: #718096;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .stat-card.total .stat-value {
+            color: #dd6b20;
+            font-size: 22px;
+        }
+
+        /* 화면 폭이 좁을 때(모바일) 1열 레이아웃으로 자동 변경 */
+        @media (max-width: 768px) {
+            .admin-container {
+                flex-direction: column-reverse;
+            }
+            .summary-sidebar {
+                width: 100%;
+                position: static;
+            }
+        }
     </style>
 </head>
 <body>
     <h1>⚙️ 매장 관리자 주문 시스템</h1>
-    <div id="admin-orders-list">
-        <p style="text-align: center; color: #999; padding: 20px 0;">주문 데이터를 불러오는 중...</p>
+    
+    <div class="admin-container">
+        <!-- 왼쪽: 주문 현황 목록 -->
+        <div class="order-list-section">
+            <div id="admin-orders-list">
+                <p style="text-align: center; color: #999; padding: 20px 0;">주문 데이터를 불러오는 중...</p>
+            </div>
+        </div>
+
+        <!-- 오른쪽: 실시간 매출 및 판매 수량 집계 -->
+        <div class="summary-sidebar">
+            <h2>📊 실시간 매출 현황</h2>
+            
+            <div class="stat-card total">
+                <div class="stat-label">💰 총 매출액</div>
+                <div class="stat-value" id="stat-total-sales">0원</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">🍟 갈릭버터 감자튀김</div>
+                <div class="stat-value" id="stat-fries-qty">0개</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">🥤 블루레몬에이드</div>
+                <div class="stat-value" id="stat-drink-qty">0개</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">🎁 세트 (감튀+음료)</div>
+                <div class="stat-value" id="stat-set-qty">0개</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -117,8 +221,12 @@
 
                 if (!orders || orders.length === 0) {
                     container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px 0;">들어온 주문이 없습니다.</p>';
+                    updateSummaryStats([]);
                     return;
                 }
+
+                // 오른쪽 매출 및 판매량 집계 업데이트
+                updateSummaryStats(orders);
 
                 container.innerHTML = orders.map(order => {
                     let itemsStr = [];
@@ -131,7 +239,6 @@
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
 
-                    // 이름 및 전화번호 호환 수집
                     const rawName = order.customer_name || order.customerName;
                     const rawPhone = order.phone;
                     const nameText = (rawName && rawName.trim() !== '') ? rawName : '미입력';
@@ -164,6 +271,26 @@
             } catch (error) {
                 console.error('관리자 주문 조회 실패:', error);
             }
+        }
+
+        // 실시간 매출 및 상품별 수량 자동 합산 함수
+        function updateSummaryStats(orders) {
+            let totalSales = 0;
+            let totalFries = 0;
+            let totalDrink = 0;
+            let totalSet = 0;
+
+            orders.forEach(order => {
+                totalSales += (order.total_price || 0);
+                totalFries += (order.fries || 0);
+                totalDrink += (order.drink || 0);
+                totalSet += (order.set_menu || 0);
+            });
+
+            document.getElementById('stat-total-sales').innerText = totalSales.toLocaleString() + '원';
+            document.getElementById('stat-fries-qty').innerText = totalFries.toLocaleString() + '개';
+            document.getElementById('stat-drink-qty').innerText = totalDrink.toLocaleString() + '개';
+            document.getElementById('stat-set-qty').innerText = totalSet.toLocaleString() + '개';
         }
 
         async function toggleStatus(orderId, currentStatus) {
