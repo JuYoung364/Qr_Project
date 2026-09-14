@@ -241,6 +241,8 @@
 
     <script>
         const API_BASE_URL = 'https://qr-order-service-9ri0.onrender.com/api/orders';
+        const TEN_MINUTES_MS = 10 * 60 * 1000; // 10분 (밀리초)
+
         const prices = {
             fries: 4000,
             drink: 2500,
@@ -335,7 +337,30 @@
                     return;
                 }
 
-                container.innerHTML = [...allOrders].reverse().map(order => {
+                const now = Date.now();
+
+                // 1. 조리완료 후 10분이 지나지 않은 주문만 필터링
+                const visibleOrders = allOrders.filter(order => {
+                    if (order.status !== '조리완료') {
+                        return true; // 조리중인 주문은 항상 표시
+                    }
+                    
+                    // updated_at이나 completed_at 필드가 서버에서 전송되면 해당 값을 사용하고, 
+                    // 없을 경우 created_at 시간 기준으로 10분을 계산합니다.
+                    const statusChangedTime = order.updated_at || order.completed_at || order.created_at;
+                    if (!statusChangedTime) return true;
+
+                    const completedTime = new Date(statusChangedTime.replace(' ', 'T') + 'Z').getTime();
+                    return (now - completedTime) < TEN_MINUTES_MS;
+                });
+
+                if (visibleOrders.length === 0) {
+                    container.innerHTML = '<p style="color: #999; text-align: center; padding: 10px 0;">주문 내역이 없습니다.</p>';
+                    return;
+                }
+
+                // 2. 최신 순으로 화면 구성
+                container.innerHTML = [...visibleOrders].reverse().map(order => {
                     let itemsStr = [];
                     if (order.fries > 0) itemsStr.push(`갈릭버터 감자튀김 ${order.fries}개`);
                     if (order.drink > 0) itemsStr.push(`블루레몬에이드 ${order.drink}개`);
