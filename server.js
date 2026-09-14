@@ -9,17 +9,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// SQLite DB 연결
 const dbPath = path.resolve(__dirname, 'orders.db');
 const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('DB 연결 실패:', err.message);
-    } else {
-        console.log('SQLite DB 연결 성공');
-    }
+    if (err) console.error('DB 연결 실패:', err.message);
+    else console.log('SQLite DB 연결 성공');
 });
 
-// 테이블 생성 및 안전한 컬럼 추가
 db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS orders (
@@ -31,26 +26,21 @@ db.serialize(() => {
             status TEXT DEFAULT '조리중',
             customer_name TEXT,
             phone TEXT,
+            order_token TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
 
     db.all("PRAGMA table_info(orders)", [], (err, rows) => {
         if (!err && rows) {
-            const hasName = rows.some(col => col.name === 'customer_name');
-            const hasPhone = rows.some(col => col.name === 'phone');
-
-            if (!hasName) {
-                db.run(`ALTER TABLE orders ADD COLUMN customer_name TEXT`, () => {});
-            }
-            if (!hasPhone) {
-                db.run(`ALTER TABLE orders ADD COLUMN phone TEXT`, () => {});
+            const hasToken = rows.some(col => col.name === 'order_token');
+            if (!hasToken) {
+                db.run(`ALTER TABLE orders ADD COLUMN order_token TEXT`, () => {});
             }
         }
     });
 });
 
-// [POST] 주문 접수 API
 app.post('/api/orders', (req, res) => {
     const fries = Number(req.body.fries) || 0;
     const drink = Number(req.body.drink) || 0;
@@ -59,13 +49,14 @@ app.post('/api/orders', (req, res) => {
     
     const customerName = req.body.customerName || req.body.customer_name || '';
     const phone = req.body.phone || '';
+    const orderToken = req.body.orderToken || '';
 
     if (!totalPrice || totalPrice <= 0) {
         return res.status(400).json({ error: '유효하지 않은 주문 금액입니다.' });
     }
 
-    const sql = `INSERT INTO orders (fries, drink, set_menu, total_price, customer_name, phone) VALUES (?, ?, ?, ?, ?, ?)`;
-    db.run(sql, [fries, drink, set_menu, totalPrice, customerName, phone], function (err) {
+    const sql = `INSERT INTO orders (fries, drink, set_menu, total_price, customer_name, phone, order_token) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    db.run(sql, [fries, drink, set_menu, totalPrice, customerName, phone, orderToken], function (err) {
         if (err) {
             console.error('주문 저장 실패:', err.message);
             return res.status(500).json({ error: '주문 저장 실패' });
@@ -74,7 +65,6 @@ app.post('/api/orders', (req, res) => {
     });
 });
 
-// [GET] 주문 목록 조회 API
 app.get('/api/orders', (req, res) => {
     const sql = `SELECT * FROM orders ORDER BY id DESC`;
     db.all(sql, [], (err, rows) => {
@@ -86,7 +76,6 @@ app.get('/api/orders', (req, res) => {
     });
 });
 
-// [PATCH] 주문 상태 변경 API
 app.patch('/api/orders/:id', (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
@@ -101,7 +90,6 @@ app.patch('/api/orders/:id', (req, res) => {
     });
 });
 
-// [DELETE] 주문 삭제 API (신규 추가)
 app.delete('/api/orders/:id', (req, res) => {
     const { id } = req.params;
     const sql = `DELETE FROM orders WHERE id = ?`;
