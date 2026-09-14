@@ -15,7 +15,69 @@
             background-color: #f4f6f8;
             padding: 20px;
         }
-        
+
+        /* 비밀번호 로그인 모달 화면 */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .login-card {
+            background: #ffffff;
+            padding: 30px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            width: 90%;
+            max-width: 360px;
+            text-align: center;
+        }
+        .login-card h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .login-card p {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .password-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 4px;
+            outline: none;
+            margin-bottom: 15px;
+        }
+        .password-input:focus {
+            border-color: #ff5722;
+        }
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background-color: #ff5722;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-login:hover {
+            background-color: #e64a19;
+        }
+
         /* 2단 레이아웃 (주문 목록 + 오른쪽 매출 요약 패널) */
         .admin-container {
             max-width: 1100px;
@@ -156,7 +218,7 @@
             font-size: 22px;
         }
 
-        /* 화면 폭이 좁을 때(모바일) 1열 레이아웃으로 자동 변경 */
+        /* 모바일용 레이아웃 */
         @media (max-width: 768px) {
             .admin-container {
                 flex-direction: column-reverse;
@@ -169,6 +231,16 @@
     </style>
 </head>
 <body>
+    <!-- 비밀번호 입력 창 -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <h2>🔒 관리자 인증</h2>
+            <p>비밀번호를 입력해 주세요.</p>
+            <input type="password" id="admin-password" class="password-input" placeholder="비밀번호" onkeyup="if(event.key==='Enter') checkPassword()">
+            <button class="btn-login" onclick="checkPassword()">확인</button>
+        </div>
+    </div>
+
     <h1>⚙️ 매장 관리자 주문 시스템</h1>
     
     <div class="admin-container">
@@ -207,11 +279,27 @@
 
     <script>
         const API_BASE_URL = 'https://qr-order-service-9ri0.onrender.com/api/orders';
+        const ADMIN_PASSWORD = '0826'; // 관리자 비밀번호
+        let pollingInterval = null;
 
-        window.onload = function() {
+        function checkPassword() {
+            const inputPw = document.getElementById('admin-password').value;
+            if (inputPw === ADMIN_PASSWORD) {
+                document.getElementById('login-overlay').style.display = 'none';
+                startAdminApp();
+            } else {
+                alert('비밀번호가 올바르지 않습니다.');
+                document.getElementById('admin-password').value = '';
+                document.getElementById('admin-password').focus();
+            }
+        }
+
+        function startAdminApp() {
             fetchAdminOrders();
-            setInterval(fetchAdminOrders, 3000);
-        };
+            if (!pollingInterval) {
+                pollingInterval = setInterval(fetchAdminOrders, 3000);
+            }
+        }
 
         async function fetchAdminOrders() {
             const container = document.getElementById('admin-orders-list');
@@ -225,7 +313,6 @@
                     return;
                 }
 
-                // 오른쪽 매출 및 판매량 집계 업데이트
                 updateSummaryStats(orders);
 
                 container.innerHTML = orders.map(order => {
@@ -273,7 +360,6 @@
             }
         }
 
-        // 실시간 매출 및 상품별 수량 자동 합산 함수
         function updateSummaryStats(orders) {
             let totalSales = 0;
             let totalFries = 0;
