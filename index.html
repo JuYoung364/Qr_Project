@@ -40,9 +40,31 @@
         h1 {
             text-align: center;
             margin-top: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             color: #333;
         }
+
+        /* 입금 계좌 안내 상자 스타일 */
+        .account-box {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .account-label {
+            font-size: 13px;
+            color: #666666;
+            margin-bottom: 4px;
+        }
+        .account-info {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1a202c;
+        }
+
         .menu-card {
             background: #fff;
             border-radius: 12px;
@@ -181,6 +203,12 @@
     <a href="admin.html" class="admin-link">관리자 페이지 ⚙️</a>
     <h1>온라인 주문</h1>
     
+    <!-- 계좌번호 안내 상자 -->
+    <div class="account-box">
+        <div class="account-label">💳 입금 계좌 안내</div>
+        <div class="account-info">토스뱅크 1000-7683-3541 김수현</div>
+    </div>
+
     <!-- 메뉴 카드 -->
     <div class="menu-card">
         <div>
@@ -339,14 +367,12 @@
 
                 const now = Date.now();
 
-                // 1. 조리완료 후 10분이 지나지 않은 주문만 필터링
+                // 조리완료 후 10분이 지나지 않은 주문만 필터링
                 const visibleOrders = allOrders.filter(order => {
                     if (order.status !== '조리완료') {
-                        return true; // 조리중인 주문은 항상 표시
+                        return true;
                     }
                     
-                    // updated_at이나 completed_at 필드가 서버에서 전송되면 해당 값을 사용하고, 
-                    // 없을 경우 created_at 시간 기준으로 10분을 계산합니다.
                     const statusChangedTime = order.updated_at || order.completed_at || order.created_at;
                     if (!statusChangedTime) return true;
 
@@ -359,7 +385,6 @@
                     return;
                 }
 
-                // 2. 최신 순으로 화면 구성
                 container.innerHTML = [...visibleOrders].reverse().map(order => {
                     let itemsStr = [];
                     if (order.fries > 0) itemsStr.push(`갈릭버터 감자튀김 ${order.fries}개`);
