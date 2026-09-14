@@ -19,9 +19,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
 });
 
-// 테이블 생성 및 새 컬럼 추가 안전 보장
+// 테이블 생성 및 안전한 컬럼 추가
 db.serialize(() => {
-    // 1. 기본 테이블 생성
     db.run(`
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,23 +35,16 @@ db.serialize(() => {
         )
     `);
 
-    // 2. 기존 DB에 customer_name, phone 컬럼이 없는 경우를 대비해 컬럼 유무 확인 후 안전하게 추가
     db.all("PRAGMA table_info(orders)", [], (err, rows) => {
         if (!err && rows) {
             const hasName = rows.some(col => col.name === 'customer_name');
             const hasPhone = rows.some(col => col.name === 'phone');
 
             if (!hasName) {
-                db.run(`ALTER TABLE orders ADD COLUMN customer_name TEXT`, (err) => {
-                    if (err) console.error('customer_name 컬럼 추가 실패:', err.message);
-                    else console.log('customer_name 컬럼 추가 성공');
-                });
+                db.run(`ALTER TABLE orders ADD COLUMN customer_name TEXT`, () => {});
             }
             if (!hasPhone) {
-                db.run(`ALTER TABLE orders ADD COLUMN phone TEXT`, (err) => {
-                    if (err) console.error('phone 컬럼 추가 실패:', err.message);
-                    else console.log('phone 컬럼 추가 성공');
-                });
+                db.run(`ALTER TABLE orders ADD COLUMN phone TEXT`, () => {});
             }
         }
     });
@@ -60,7 +52,6 @@ db.serialize(() => {
 
 // [POST] 주문 접수 API
 app.post('/api/orders', (req, res) => {
-    // 프론트엔드 호환성을 위해 customerName/customer_name, phone 호환 처리
     const fries = Number(req.body.fries) || 0;
     const drink = Number(req.body.drink) || 0;
     const set_menu = Number(req.body.set_menu || req.body.setMenu) || 0;
@@ -107,6 +98,19 @@ app.patch('/api/orders/:id', (req, res) => {
             return res.status(500).json({ error: '상태 변경 실패' });
         }
         res.json({ message: '상태 변경 완료' });
+    });
+});
+
+// [DELETE] 주문 삭제 API (신규 추가)
+app.delete('/api/orders/:id', (req, res) => {
+    const { id } = req.params;
+    const sql = `DELETE FROM orders WHERE id = ?`;
+    db.run(sql, [id], function (err) {
+        if (err) {
+            console.error('주문 삭제 실패:', err.message);
+            return res.status(500).json({ error: '주문 삭제 실패' });
+        }
+        res.json({ message: '주문 삭제 완료' });
     });
 });
 
