@@ -9,12 +9,14 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// SQLite DB 연결
 const dbPath = path.resolve(__dirname, 'orders.db');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) console.error('DB 연결 실패:', err.message);
     else console.log('SQLite DB 연결 성공');
 });
 
+// 테이블 생성 및 컬럼 안전 추가
 db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS orders (
@@ -33,14 +35,18 @@ db.serialize(() => {
 
     db.all("PRAGMA table_info(orders)", [], (err, rows) => {
         if (!err && rows) {
+            const hasName = rows.some(col => col.name === 'customer_name');
+            const hasPhone = rows.some(col => col.name === 'phone');
             const hasToken = rows.some(col => col.name === 'order_token');
-            if (!hasToken) {
-                db.run(`ALTER TABLE orders ADD COLUMN order_token TEXT`, () => {});
-            }
+
+            if (!hasName) db.run(`ALTER TABLE orders ADD COLUMN customer_name TEXT`, () => {});
+            if (!hasPhone) db.run(`ALTER TABLE orders ADD COLUMN phone TEXT`, () => {});
+            if (!hasToken) db.run(`ALTER TABLE orders ADD COLUMN order_token TEXT`, () => {});
         }
     });
 });
 
+// [POST] 주문 접수 API
 app.post('/api/orders', (req, res) => {
     const fries = Number(req.body.fries) || 0;
     const drink = Number(req.body.drink) || 0;
@@ -49,7 +55,7 @@ app.post('/api/orders', (req, res) => {
     
     const customerName = req.body.customerName || req.body.customer_name || '';
     const phone = req.body.phone || '';
-    const orderToken = req.body.orderToken || '';
+    const orderToken = req.body.orderToken || req.body.order_token || '';
 
     if (!totalPrice || totalPrice <= 0) {
         return res.status(400).json({ error: '유효하지 않은 주문 금액입니다.' });
@@ -61,10 +67,11 @@ app.post('/api/orders', (req, res) => {
             console.error('주문 저장 실패:', err.message);
             return res.status(500).json({ error: '주문 저장 실패' });
         }
-        res.json({ message: '주문 접수 완료', orderId: this.lastID });
+        res.json({ message: '주문 접수 완료', orderId: this.lastID, orderToken: orderToken });
     });
 });
 
+// [GET] 주문 목록 조회 API
 app.get('/api/orders', (req, res) => {
     const sql = `SELECT * FROM orders ORDER BY id DESC`;
     db.all(sql, [], (err, rows) => {
@@ -76,6 +83,7 @@ app.get('/api/orders', (req, res) => {
     });
 });
 
+// [PATCH] 주문 상태 변경 API
 app.patch('/api/orders/:id', (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
@@ -90,6 +98,7 @@ app.patch('/api/orders/:id', (req, res) => {
     });
 });
 
+// [DELETE] 주문 삭제 API
 app.delete('/api/orders/:id', (req, res) => {
     const { id } = req.params;
     const sql = `DELETE FROM orders WHERE id = ?`;

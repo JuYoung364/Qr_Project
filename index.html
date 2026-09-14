@@ -203,6 +203,7 @@
         <div class="account-info">토스뱅크 1000-7683-3541 김수현</div>
     </div>
 
+    <!-- 메뉴 카드 -->
     <div class="menu-card">
         <div>
             <h3>🍟 갈릭버터 감자튀김</h3>
@@ -260,7 +261,8 @@
 
     <script>
         const API_BASE_URL = 'https://qr-order-service-9ri0.onrender.com/api/orders';
-        const TEN_MINUTES_MS = 10 * 60 * 1000; // 10분 (밀리초)
+        const TEN_MINUTES_MS = 10 * 60 * 1000;  // 조리완료 후 10분 지나면 숨김
+        const ONE_HOUR_MS = 60 * 60 * 1000;     // 1시간 지난 내 로컬 기록 자동 파기
 
         const prices = { fries: 4000, drink: 2500, set_menu: 6000 };
         const cart = { fries: 0, drink: 0, set_menu: 0 };
@@ -291,7 +293,7 @@
             const nameInput = document.getElementById('customer-name').value.trim();
             const phoneInput = document.getElementById('customer-phone').value.trim();
 
-            // 주문 고유 식별 토큰 생성
+            // 절대 겹치지 않는 무작위 고유 주문 토큰
             const orderToken = 'tok_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 
             try {
@@ -312,15 +314,17 @@
                 if (response.ok) {
                     const result = await response.json();
 
-                    // 1. 숫자형 ID 호환 저장
-                    let myOrderIds = JSON.parse(localStorage.getItem('myOrderIds') || '[]');
-                    myOrderIds.push(Number(result.orderId));
-                    localStorage.setItem('myOrderIds', JSON.stringify(myOrderIds));
+                    // 구버전 스토리지 키(myOrderIds)는 삭제 처리
+                    localStorage.removeItem('myOrderIds');
 
-                    // 2. 고유 식별 토큰 저장
-                    let myTokens = JSON.parse(localStorage.getItem('myOrderTokens') || '[]');
-                    myTokens.push(orderToken);
-                    localStorage.setItem('myOrderTokens', JSON.stringify(myTokens));
+                    // 타임스탬프와 고유 토큰을 함께 저장
+                    let myOrdersHistory = JSON.parse(localStorage.getItem('myOrdersHistory') || '[]');
+                    myOrdersHistory.push({
+                        id: Number(result.orderId),
+                        token: orderToken,
+                        timestamp: Date.now()
+                    });
+                    localStorage.setItem('myOrdersHistory', JSON.stringify(myOrdersHistory));
 
                     alert('주문이 접수되었습니다!');
 
@@ -343,12 +347,20 @@
         }
 
         async function fetchMyOrders() {
-            // 로컬 스토리지 데이터 가져오기 (ID와 토큰 모두 지원)
-            const rawMyOrderIds = JSON.parse(localStorage.getItem('myOrderIds') || '[]');
-            const myOrderIds = rawMyOrderIds.map(id => Number(id));
-            const myTokens = JSON.parse(localStorage.getItem('myOrderTokens') || '[]');
-            
+            const now = Date.now();
             const container = document.getElementById('my-orders-list');
+
+            // 1. 오래된 구버전 스토리지 키 완벽 삭제
+            if (localStorage.getItem('myOrderIds')) localStorage.removeItem('myOrderIds');
+            if (localStorage.getItem('myOrdersData')) localStorage.removeItem('myOrdersData');
+
+            // 2. 1시간이 지나지 않은 유효한 내 주문 기록만 유지
+            let myOrdersHistory = JSON.parse(localStorage.getItem('myOrdersHistory') || '[]');
+            myOrdersHistory = myOrdersHistory.filter(item => (now - item.timestamp) < ONE_HOUR_MS);
+            localStorage.setItem('myOrdersHistory', JSON.stringify(myOrdersHistory));
+
+            const validTokens = myOrdersHistory.map(item => item.token);
+            const validIds = myOrdersHistory.map(item => Number(item.id));
 
             try {
                 const response = await fetch(API_BASE_URL);
@@ -359,9 +371,7 @@
                     return;
                 }
 
-                const now = Date.now();
-
-                // 조리완료 10분 후 필터링
+                // 3. 조리완료 후 10분이 지나지 않은 주문만 목록 노출
                 const visibleOrders = allOrders.filter(order => {
                     if (order.status !== '조리완료') return true;
                     const statusChangedTime = order.updated_at || order.completed_at || order.created_at;
@@ -384,12 +394,12 @@
                     const isCompleted = order.status === '조리완료';
                     const currentOrderId = Number(order.id);
 
-                    // 1순위: 고유 토큰 비교 / 2순위: ID 비교 (이중 하이브리드 판별)
+                    // 4. [내 주문] 정확한 판별: 토큰 비교 우선, 토큰 없을 시 최근 1시간 이내 내 ID만 비교
                     let isMine = false;
-                    if (order.order_token && myTokens.length > 0) {
-                        isMine = myTokens.includes(order.order_token);
-                    } else if (myOrderIds.length > 0) {
-                        isMine = myOrderIds.includes(currentOrderId);
+                    if (order.order_token && validTokens.length > 0) {
+                        isMine = validTokens.includes(order.order_token);
+                    } else if (validIds.length > 0) {
+                        isMine = validIds.includes(currentOrderId);
                     }
 
                     const timeStr = new Date(order.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString('ko-KR', {
